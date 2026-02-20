@@ -13,6 +13,7 @@ Terraform stack that provisions an Always Free ARM instance on Oracle Cloud, wit
 * 1 Public Subnet
 * 1 Internet Gateway
 * Up to 4 ARM Compute Instances
+* Up to 24GB Memory
 * Up to 200GB Block Storage
 
 ---
