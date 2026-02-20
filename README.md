@@ -7,22 +7,44 @@ Terraform stack that provisions an Always Free ARM instance on Oracle Cloud, wit
 
 ---
 
-## Quick Start
+## What this builds
 
-```bash
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars — set compartment_id and region
-terraform init
-terraform apply
-```
+* 1 VCN
+* 1 Public Subnet
+* 1 Internet Gateway
+* Up to 4 ARM Compute Instances
+* Up to 200GB Block Storage
 
 ---
 
 ## Prerequisites
 
-- OCI CLI configured (`oci setup config`) or equivalent environment variables
-- Terraform >= 1.0 (or OpenTofu)
-- A Pay-as-you-Go OCI account (Always Free resources won't incur charges, but the upgrade from the trial is required for ARM instances to persist)
+* An active OCI account.
+* Terraform installed.
+* OCI API keys generated.
+
+---
+
+## Quick Start / How to Use
+
+1. Copy the example variables file:
+   ```bash
+   cp terraform.tfvars.example terraform.tfvars
+   ```
+
+2. Edit `terraform.tfvars` and provide your configuration:
+   * Tenancy OCID
+   * User OCID
+   * Region
+   * Fingerprint
+   * Private Key Path
+
+3. Deploy using the standard Terraform commands:
+   ```bash
+   terraform init
+   terraform plan
+   terraform apply
+   ```
 
 ---
 
@@ -58,24 +80,9 @@ Only `compartment_id` and `region` are required. Everything else has sensible de
 
 ---
 
-## Usage
+## Accessing the Instance
 
-1. **Initialize** the Terraform working directory:
-   ```bash
-   terraform init
-   ```
-
-2. **Preview** what will be created:
-   ```bash
-   terraform plan
-   ```
-
-3. **Apply** to create the instance and networking:
-   ```bash
-   terraform apply
-   ```
-
-4. **SSH in** once the instance is running:
+**SSH in** once the instance is running:
    ```bash
    ssh -i ~/.ssh/your-key ubuntu@$(terraform output -raw instance_public_ip)
    ```
@@ -93,6 +100,8 @@ The defaults stay within free-tier limits. If you change them, make sure the tot
 | Boot volume | 47 GB | 200 GB total |
 | Instances | 1 | Up to 4 ARM + 2 AMD |
 | VCN | 1 | Included |
+
+**Cost Disclaimer: While this targets the Always Free tier, you are ultimately responsible for checking your OCI billing dashboard to ensure you haven't exceeded limits or selected the wrong region/shapes.**
 
 ---
 
