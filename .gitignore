@@ -1,0 +1,22 @@
+# Terraform state and lock
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+.terraform.tfstate.lock.info
+
+# Terraform working directory
+.terraform/
+
+# Variable files with real values (contain OCIDs/secrets)
+terraform.tfvars
+*.auto.tfvars
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
