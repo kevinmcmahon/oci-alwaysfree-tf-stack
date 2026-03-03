@@ -20,9 +20,16 @@ Terraform stack that provisions an Always Free ARM instance on Oracle Cloud, wit
 
 ## Prerequisites
 
-* An active OCI account.
-* Terraform installed.
-* OCI API keys generated.
+* An active OCI account ([sign up for Always Free](https://www.oracle.com/cloud/free/)).
+* [Terraform](https://developer.hashicorp.com/terraform/install) installed.
+* OCI CLI installed and configured with API keys — see Oracle's [Required Keys and OCIDs](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm) guide for the full walkthrough. Quick version:
+  ```bash
+  uv tool install oci-cli   # or: pipx install oci-cli
+  oci setup config           # generates ~/.oci/config + API key pair
+  # Then upload ~/.oci/oci_api_key_public.pem to:
+  # OCI Console → Profile → My profile → API keys → Add API key
+  ```
+* An SSH key pair (`ssh-keygen -t ed25519` if you don't have one).
 
 ---
 
@@ -33,14 +40,21 @@ Terraform stack that provisions an Always Free ARM instance on Oracle Cloud, wit
    cp terraform.tfvars.example terraform.tfvars
    ```
 
-2. Edit `terraform.tfvars` and provide your configuration:
-   * Tenancy OCID
-   * User OCID
-   * Region
-   * Fingerprint
-   * Private Key Path
+2. Edit `terraform.tfvars` — only two values are required:
+   ```bash
+   # Find your compartment (tenancy) OCID:
+   oci iam compartment list --query 'data[0]."compartment-id"' --raw-output
 
-3. Deploy using the standard Terraform commands:
+   # List available regions:
+   oci iam region list --query 'data[*].name' --raw-output
+   ```
+
+3. Run the preflight check to catch config issues before they become cryptic Terraform errors:
+   ```bash
+   ./preflight.sh
+   ```
+
+4. Deploy:
    ```bash
    terraform init
    terraform plan
@@ -57,6 +71,7 @@ oci-alwaysfree-tf-stack/
 ├── variables.tf             # Input variables (2 required, 8 with defaults)
 ├── outputs.tf               # IPs, OCIDs for downstream use
 ├── terraform.tfvars.example # Copy to terraform.tfvars and fill in
+├── preflight.sh             # Pre-deploy validation (OCI auth, keys, config)
 └── .gitignore               # Ignores tfstate, .terraform/, and tfvars
 ```
 
@@ -115,6 +130,12 @@ terraform destroy
 Removes the instance, VCN, subnet, and gateway. Terraform state tracks what was created, so the destroy is clean and complete.
 
 ---
+
+## Troubleshooting
+
+- **Intermittent 401-NotAuthenticated from Terraform**: Check that your PEM key file (`~/.oci/oci_api_key.pem`) ends cleanly with `-----END PRIVATE KEY-----` and nothing after it. The OCI CLI's Python SDK tolerates trailing junk, but the Terraform provider's Go SDK does not — it causes random auth failures where some API calls succeed and others don't. The `preflight.sh` script checks for this automatically.
+
+- **"Python X.Y not found" from OCI CLI**: Install with `uv tool install oci-cli` or `pipx install oci-cli` to use an isolated Python environment instead of depending on the system Python.
 
 ## Notes
 
