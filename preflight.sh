@@ -50,13 +50,16 @@ if [[ -f "$OCI_CONFIG" ]]; then
     if [[ -n "$key_file" && -f "$key_file" ]]; then
         ok "  private key exists: $key_file"
 
-        # Check for trailing junk after PEM end marker
-        last_content=$(tail -1 "$key_file" | tr -d '[:space:]')
-        if [[ "$last_content" == "-----ENDPRIVATEKEY-----" || "$last_content" == "-----ENDRSAPRIVATEKEY-----" ]]; then
+        # Require a supported PEM footer with no nonblank trailing data.
+        if awk '
+            /^-----END (ENCRYPTED |RSA )?PRIVATE KEY-----[[:space:]]*$/ { end_line = NR }
+            NF { last_content_line = NR }
+            END { exit !(end_line > 0 && last_content_line == end_line) }
+        ' "$key_file"; then
             ok "  private key PEM format is clean"
         else
-            die "  private key has trailing data after END marker (will cause intermittent Terraform 401s)"
-            printf "       Fix: remove everything after '-----END PRIVATE KEY-----' in %s\n" "$key_file"
+            die "  private key lacks a supported PEM footer or has trailing data"
+            printf "       Fix the PEM footer or remove nonblank data after it in %s\n" "$key_file"
         fi
 
         # Check permissions
@@ -78,7 +81,10 @@ fi
 # --- SSH key ---
 ssh_path=""
 if [[ -f "terraform.tfvars" ]]; then
-    ssh_path=$(grep '^ssh_public_key_path' terraform.tfvars 2>/dev/null | sed 's/.*=\s*"\(.*\)"/\1/' | sed "s|~|$HOME|" || true)
+    ssh_path=$(awk -F '"' '/^[[:space:]]*ssh_public_key_path[[:space:]]*=/ { print $2; exit }' terraform.tfvars 2>/dev/null || true)
+    if [[ "$ssh_path" == \~/* ]]; then
+        ssh_path="$HOME/${ssh_path:2}"
+    fi
 fi
 ssh_path="${ssh_path:-$HOME/.ssh/id_ed25519.pub}"
 
@@ -123,9 +129,9 @@ printf "\n"
 printf "  %s passed, %s warnings, %s failed\n" "$pass" "$warn" "$fail"
 
 if ((fail > 0)); then
-    printf "\n${RED}  Fix the failures above before running terraform init.${NC}\n\n"
+    printf '\n%b  Fix the failures above before running terraform init.%b\n\n' "$RED" "$NC"
     exit 1
 else
-    printf "\n${GREEN}  Ready to go. Run: terraform init && terraform plan${NC}\n\n"
+    printf '\n%b  Ready to go. Run: terraform init && terraform plan%b\n\n' "$GREEN" "$NC"
     exit 0
 fi

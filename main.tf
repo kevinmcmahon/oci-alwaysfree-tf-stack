@@ -62,6 +62,74 @@ resource "oci_core_default_route_table" "this" {
   }
 }
 
+resource "oci_core_default_security_list" "this" {
+  manage_default_resource_id = oci_core_vcn.this.default_security_list_id
+  display_name               = "${var.name_prefix}-security-list"
+
+  egress_security_rules {
+    destination      = "0.0.0.0/0"
+    destination_type = "CIDR_BLOCK"
+    protocol         = "all"
+    stateless        = false
+    description      = "Allow outbound IPv4 traffic"
+  }
+
+  ingress_security_rules {
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    protocol    = "1"
+    stateless   = false
+    description = "Path MTU discovery"
+
+    icmp_options {
+      type = 3
+      code = 4
+    }
+  }
+
+  ingress_security_rules {
+    source      = oci_core_vcn.this.cidr_block
+    source_type = "CIDR_BLOCK"
+    protocol    = "1"
+    stateless   = false
+    description = "ICMP destination unreachable within the VCN"
+
+    icmp_options {
+      type = 3
+    }
+  }
+
+  ingress_security_rules {
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    protocol    = "17"
+    stateless   = false
+    description = "Tailscale direct connections"
+
+    udp_options {
+      min = 41641
+      max = 41641
+    }
+  }
+
+  dynamic "ingress_security_rules" {
+    for_each = var.bootstrap_ssh_cidr == null ? [] : [var.bootstrap_ssh_cidr]
+
+    content {
+      source      = ingress_security_rules.value
+      source_type = "CIDR_BLOCK"
+      protocol    = "6"
+      stateless   = false
+      description = "Temporary bootstrap SSH access"
+
+      tcp_options {
+        min = 22
+        max = 22
+      }
+    }
+  }
+}
+
 resource "oci_core_subnet" "this" {
   compartment_id = var.compartment_id
   vcn_id         = oci_core_vcn.this.id

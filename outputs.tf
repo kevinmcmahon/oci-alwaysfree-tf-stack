@@ -30,3 +30,12 @@ output "subnet_id" {
   description = "OCID of the subnet"
   value       = oci_core_subnet.this.id
 }
+
+output "bootstrap_ssh_access" {
+  description = "Whether temporary public SSH access is open and its scoped IPv4 /32"
+  sensitive   = false
+  value = {
+    enabled = var.bootstrap_ssh_cidr != null
+    cidr    = var.bootstrap_ssh_cidr
+  }
+}

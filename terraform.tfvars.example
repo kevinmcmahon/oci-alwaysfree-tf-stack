@@ -14,5 +14,6 @@ region = "us-chicago-1"
 # name_prefix               = "oci-arm"
 # ocpus                     = 4
 # memory_in_gbs             = 24
-# boot_volume_size_in_gbs   = 47
+# boot_volume_size_in_gbs   = 50
 # assign_public_ip          = true
+# bootstrap_ssh_cidr        = "198.51.100.42/32" # Temporary; remove or set null after Tailscale handoff

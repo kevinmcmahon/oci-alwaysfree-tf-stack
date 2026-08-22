@@ -12,6 +12,7 @@ Terraform stack that provisions an Always Free ARM instance on Oracle Cloud, wit
 * 1 VCN
 * 1 Public Subnet
 * 1 Internet Gateway
+* A managed default security list with public Tailscale UDP and optional scoped Bootstrap SSH
 * Up to 4 ARM Compute Instances
 * Up to 24GB Memory
 * Up to 200GB Block Storage
@@ -91,8 +92,9 @@ Only `compartment_id` and `region` are required. Everything else has sensible de
 | `name_prefix` | `string` | `"oci-arm"` | Prefix for resource display names and DNS labels |
 | `ocpus` | `number` | `4` | ARM OCPUs (Always Free max: 4 total) |
 | `memory_in_gbs` | `number` | `24` | Memory in GB (Always Free max: 24 total) |
-| `boot_volume_size_in_gbs` | `number` | `47` | Boot volume in GB (Always Free max: 200 total) |
-| `assign_public_ip` | `bool` | `true` | Assign a public IP (disable once you have alternative access, e.g., VPN) |
+| `boot_volume_size_in_gbs` | `number` | `50` | Boot volume in GB (Always Free max: 200 total) |
+| `assign_public_ip` | `bool` | `true` | Keep a public IP for outbound Internet access through the Internet Gateway |
+| `bootstrap_ssh_cidr` | `string` | `null` | Temporary workstation IPv4 `/32` allowed to reach public SSH; null allows no public SSH |
 
 ---
 
@@ -100,8 +102,19 @@ Only `compartment_id` and `region` are required. Everything else has sensible de
 
 **SSH in** once the instance is running:
    ```bash
+   terraform apply -var='bootstrap_ssh_cidr=198.51.100.42/32'
    ssh -i ~/.ssh/your-key ubuntu@$(terraform output -raw instance_public_ip)
    ```
+
+Use only the workstation's current public IPv4 address with `/32`. After a
+tested Tailscale handoff, close public SSH while retaining the public IP for
+outbound traffic:
+
+```bash
+# Remove bootstrap_ssh_cidr from terraform.tfvars, or set it to null there.
+terraform apply
+terraform output -json bootstrap_ssh_access
+```
 
 ---
 
@@ -113,7 +126,7 @@ The defaults stay within free-tier limits. If you change them, make sure the tot
 |----------|----------------|-------------------|
 | ARM OCPUs | 4 | 4 total |
 | Memory | 24 GB | 24 GB total |
-| Boot volume | 47 GB | 200 GB total |
+| Boot volume | 50 GB | 200 GB total |
 | Instances | 1 | Up to 4 ARM + 2 AMD |
 | VCN | 1 | Included |
 
@@ -141,7 +154,7 @@ Removes the instance, VCN, subnet, and gateway. Terraform state tracks what was 
 
 - **OCI authentication**: The provider uses `~/.oci/config` by default. See the [OCI Terraform provider docs](https://registry.terraform.io/providers/oracle/oci/latest/docs) for alternatives (env vars, instance principal, etc.).
 
-- **Public IP lifecycle**: Once you have alternative access (e.g., VPN or Tailscale), set `assign_public_ip = false` and run `terraform apply` again to drop the public IP.
+- **Public IP lifecycle**: Keep `assign_public_ip = true` in this Internet Gateway topology so the instance retains outbound Internet access. Set `bootstrap_ssh_cidr = null` after Tailscale handoff to remove public SSH ingress.
 
 - **Finding your OCIDs**:
   ```bash
